@@ -8,3 +8,9 @@ Source:
 - [recognition](https://github.com/KuanxingShi/Road_sign_recognition)
 
 - [recognition](https://github.com/shubhamprateek/TrafficSignClassifier/blob/master/TrafficSign_Main.py)
+
+- [video](https://www.youtube.com/watch?v=Vtc64rPHZ6I)
+
+- [repo](https://github.com/v-thiennp12/Traffic-Sign-Recognition-with-Keras-Tensorflow/blob/main/README.md)
+
+- [data](https://sid.erda.dk/public/archives/daaeac0d7ce1152aea9b61d9f1e19370/published-archive.html)
