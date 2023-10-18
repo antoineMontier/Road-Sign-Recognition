@@ -13,7 +13,6 @@ from tensorflow.keras import utils
 # ===
 
 # circle, kite, parallelogram, rectangle, rhombus, square, trapezoid, triangle
-labels = ['circle', 'kite', 'parallelogram', 'rectangle', 'rhombus', 'square', 'trapezoid', 'triangle']
 image_shape = (224, 224, 1)
 
 # ===
@@ -29,46 +28,22 @@ def make_labels(directory, data=[], y_hat=[], label=0):
 # ===
 
 circle, y_circle = [], []
-circle, y_circle = make_labels('shape-train/circle/', data=circle, y_hat=y_circle, label=labels.index('circle'))
+circle, y_circle = make_labels('shape-train/circle/', data=circle, y_hat=y_circle, label=0)
 print("circle loaded")
 
-kite, y_kite = [], []
-kite, y_kite = make_labels('shape-train/kite/', data=kite, y_hat=y_kite, label=labels.index('kite'))
-print("kite loaded")
-
-parallelogram, y_parallelogram = [], []
-parallelogram, y_parallelogram = make_labels('shape-train/parallelogram/', data=parallelogram, y_hat=y_parallelogram, label=labels.index('parallelogram'))
-print("parallelogram loaded")
-
-rectangle, y_rectangle = [], []
-rectangle, y_rectangle = make_labels('shape-train/rectangle/', data=rectangle, y_hat=y_rectangle, label=labels.index('rectangle'))
-print("rectangle loaded")
-
-rhombus, y_rhombus = [], []
-rhombus, y_rhombus = make_labels('shape-train/rhombus/', data=rhombus, y_hat=y_rhombus, label=labels.index('rhombus'))
-print("rhombus loaded")
-
-square, y_square = [], []
-square, y_square = make_labels('shape-train/square/', data=square, y_hat=y_square, label=labels.index('square'))
-print("square loaded")
-
-trapezoid, y_trapezoid = [], []
-trapezoid, y_trapezoid = make_labels('shape-train/trapezoid/', data=trapezoid, y_hat=y_trapezoid, label=labels.index('trapezoid'))
-print("trapezoid loaded")
-
-triangle, y_triangle = [], []
-triangle, y_triangle = make_labels('shape-train/triangle/', data=triangle, y_hat=y_triangle, label=labels.index('triangle'))
-print("triangle loaded")
+no_circle, y_no_circle = [], []
+no_circle, y_no_circle = make_labels('shape-train/not-circle/', data=no_circle, y_hat=y_no_circle, label=1)
+print("no_circle loaded")
 
 # ===
 
-X = np.vstack((circle, kite, parallelogram, rectangle, rhombus, square, trapezoid, triangle))
-y = np.hstack((y_circle, y_kite, y_parallelogram, y_rectangle, y_rhombus, y_square, y_trapezoid, y_triangle)).reshape(-1, 1)
+X = np.vstack((circle, no_circle))
+y = np.hstack((y_circle, y_no_circle)).reshape(-1, 1)
 
 # ===
 
 classifier = Sequential()
-# Convolution layer, with 32 random 3x3 kernels
+
 c1 = Conv2D(48, (3,3), padding='same', input_shape = image_shape, activation = 'relu')
 classifier.add(c1)
 classifier.add(MaxPooling2D(pool_size=(3, 3)))
@@ -77,7 +52,7 @@ classifier.add(Flatten())
 w1 = Dense(units = 32, activation = 'relu')
 w2 = Dense(units = 16, activation = 'relu')
 w3 = Dense(units = 4, activation = 'relu')
-w_end = Dense(units = 8, activation = 'softmax')
+w_end = Dense(units = 2, activation = 'softmax')
 classifier.add(w1)
 classifier.add(Dropout(0.5)) 
 classifier.add(w2)
@@ -87,7 +62,7 @@ classifier.add(w_end)
 
 # ===
 
-classifier.compile( optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+classifier.compile( optimizer = 'adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
 
 # ===
 
@@ -99,8 +74,12 @@ print(y_train.shape)
 
 # ===
 
-history = classifier.fit(X_train, y_train, batch_size=16, epochs=10, verbose=1, validation_data=(X_test, y_test))
+history = classifier.fit(X_train, y_train, batch_size=16, epochs=2, verbose=1, validation_data=(X_test, y_test))
 
 from keras.models import load_model
 
 classifier.save('shape-recognize-10epochs.h5')
+
+scores = classifier.evaluate(X_test, y_test, verbose=1)
+print(f"Test loss: {scores[0]}")
+print(f"Test accuracy: {scores[1]}")
