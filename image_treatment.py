@@ -11,6 +11,10 @@ import statistics
 import cv2
 import scipy
 
+from keras.models import load_model
+
+shape_recognizer = load_model('shape-recognizerv2-5eh.h5')
+
 def edge_detection(img_bgr):
     img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     # Apply the Sobel filters for horizontal and vertical edge detection
@@ -140,9 +144,61 @@ def filter_c(contours, image):
         # Calculate the aspect ratio (ratio of major axis to minor axis)
         ratio = major_axis / minor_axis
 
-        if(c_area > 6**2 and c_area > image_area*.001 and 1/3 < ratio < 3):
+        if(c_area > 6**2 and c_area > image_area*.001 and 0.5 < ratio < 2):
             n_list.append(cont)
     return n_list
+
+def pred_circle(img_bgr):
+    # Load and preprocess the image
+    img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    img = cv2.resize(img, (224, 224))
+    img = np.expand_dims(img, axis=0)
+
+    # Make a prediction
+    prediction = shape_recognizer.predict(img)
+
+    # Interpret the prediction
+    return prediction[0][0]
+
+def get_min_x_max_x_min_y_max_y(contour):
+    min_x, min_y = float('inf'), float('inf')
+    max_x, max_y = -float('inf'), -float('inf')
+
+    # Iterate through the points in the contour
+    for point in contour:
+        x, y = point[0]
+        min_x = min(min_x, x)
+        max_x = max(max_x, x)
+        min_y = min(min_y, y)
+        max_y = max(max_y, y)
+
+    return min_x, max_x, min_y, max_y
+
+def predict_contour(contour):
+
+
+    min_x, max_x, min_y, max_y = get_min_x_max_x_min_y_max_y(contour)
+
+    width = max_x - min_x + 2*3
+    height = max_y - min_y + 2*3
+
+    offset_contour = contour.copy()
+    for point in offset_contour:
+        point[0][0] -= min_x - 3
+        point[0][1] -= min_y - 3
+        
+
+
+    # Create a blank binary image
+    new_image = np.zeros((height, width), dtype=np.uint8)
+
+
+    cv2.drawContours(new_image, [offset_contour], 0, 255, thickness=2)
+
+    pred = 100*(1 - pred_circle(new_image))
+
+    return pred, new_image
+    
 
 # bug: 35 41 96 98 104 131
 
@@ -151,7 +207,9 @@ for i in range(45, 172):
     img_bgr = cv2.imread(fn)
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
-    edged = (edge_detection(blur(binary_three(img_bgr)))) 
+
+    edged = edge_detection(blur(binary_three(img_bgr)))
+
     contours, hierachy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     _, (ax1) = plt.subplots(1,figsize=(20,20))
@@ -159,7 +217,15 @@ for i in range(45, 172):
     ax1.imshow(img_rgb);
 
     for cont in filter_c(contours, img_rgb):
-        ax1.add_patch(matplotlib.patches.Polygon(cont[:, 0, :], edgecolor="green", linewidth=2, fill=False))
-    
+        pred, _ = predict_contour(cont)
+        x, _, y, _ = get_min_x_max_x_min_y_max_y(cont)
+
+        if pred > .5:
+            ax1.add_patch(matplotlib.patches.Polygon(cont[:, 0, :], edgecolor="green", linewidth=3, fill=False))
+            ax1.annotate(f"{pred:2.2f}%", (x, y-5), size=16, color='blue')
+        else :
+            ax1.add_patch(matplotlib.patches.Polygon(cont[:, 0, :], edgecolor="red", linewidth=3, fill=False))
+            ax1.annotate(f"{pred:2.2f}%", (x, y-5), size=16, color='orange')
+
     plt.title(fn)
     plt.show()
