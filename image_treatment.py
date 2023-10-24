@@ -209,19 +209,24 @@ def get_pannels(contours, threshold=80):
         if(pred < threshold):
             print(" discard")
             continue
-        print(f" keep because {pred} < {threshold}")
+        print(f" keep because {pred} > {threshold}")
         res.append(img(min_x, max_x, min_y, max_y, pred, im))
     
-    # remove the regions that are in common
+    if len(res) < 2:
+        return res
 
+    # remove the regions that are in common
     n_res = []
 
     for r in range(len(res)):
+        included = False
         for k in range(r + 1, len(res)):
-            if common_area((res[r].min_x, res[r].max_x, res[r].min_y, res[r].max_y), (res[k].min_x, res[k].max_x, res[k].min_y, res[k].max_y)) < 2/3:
-                n_res.append(res[r])
+            if included or is_fully_included((res[r].min_x, res[r].max_x, res[r].min_y, res[r].max_y), (res[k].min_x, res[k].max_x, res[k].min_y, res[k].max_y)):
+                included = True
+        if not included:
+            n_res.append(res[r])
 
-    return res
+    return n_res
 
 class img:
     def __init__(self, min_x, max_x, min_y, max_y, pred, image):
@@ -257,26 +262,16 @@ def disply_im(imgs, im=None, full_im=False, contours=None):
             
     plt.show()
 
-def common_area(region1, region2):
+def is_fully_included(region1, region2):
     min_x1, max_x1, min_y1, max_y1 = region1
     min_x2, max_x2, min_y2, max_y2 = region2
     
-    # Calculate the coordinates of the common area
-    common_min_x = max(min_x1, min_x2)
-    common_max_x = min(max_x1, max_x2)
-    common_min_y = max(min_y1, min_y2)
-    common_max_y = min(max_y1, max_y2)
-
-    # Check if there is any overlap
-    if common_min_x < common_max_x and common_min_y < common_max_y:
-        return (common_max_x - common_min_x) * (common_max_y - common_min_y) / ((max_x1 - min_x1) * (max_y1 - min_y1))
-    
-    return 0
-
+    # Check if region1 is fully included in region2
+    return (min_x1 >= min_x2) and (max_x1 <= max_x2) and (min_y1 >= min_y2) and (max_y1 <= max_y2)
 
 # bug: 35 41 96 98 104 131
 
-for i in range(46, 172):
+for i in range(2, 172):
     fn = f"./img/IMG_0{i:03d}.png"
     img_bgr = cv2.imread(fn)
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
