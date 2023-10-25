@@ -55,10 +55,23 @@ y_cat = to_categorical(y)
 # Split your data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_seed)
 
+print("data normalized")
+
+# ===
+
+circle = None
+y_circle = None
+no_circle = None
+y_no_circle = None
+print("emptied not normalized data")
+
+
 # ===
 
 # Load a pre-trained MobileNetV2 model as a feature extractor
 base_model = MobileNetV2(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
+
+print("pre-trained model loaded")
 
 # Create a custom head for classification
 classifier = Sequential()
@@ -68,22 +81,30 @@ classifier.add(Dense(128, activation='relu'))
 classifier.add(Dropout(0.5))
 classifier.add(Dense(1, activation='sigmoid'))  # Binary classification (circle or not circle)
 
+print("custom model loaded")
+
 # Combine the base model and the custom head
 model = Sequential()
 model.add(base_model)
 model.add(classifier)
 
+print("model merged")
+
 # Set the layers in the base model as non-trainable (feature extractor)
 for layer in base_model.layers:
     layer.trainable = False
 
+print("made untrainable base model layers")
+
 # Compile the model
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Train the model
-history = model.fit(X_train, y_train, batch_size=16, epochs=5, verbose=1, validation_data=(X_test, y_test))
+print("compiled model, ready to fit")
 
-model.save('shape-recognizerv2-5eh.h5')
+# Train the model
+history = model.fit(X_train, y_train, batch_size=16, epochs=30, verbose=1, validation_data=(X_test, y_test))
+
+model.save('shape-recognizerv3-30eh.h5')
 
 # Evaluate the model
 scores = model.evaluate(X_test, y_test, verbose=1)
