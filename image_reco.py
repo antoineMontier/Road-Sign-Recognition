@@ -10,7 +10,6 @@ import itertools
 import statistics
 import cv2
 import scipy
-
 from keras.models import load_model
 
 shape_recognizer = load_model('shape-recognizerv3-30eh.h5')
