@@ -6,6 +6,7 @@ import matplotlib
 from mpl_toolkits.mplot3d import Axes3D
 import sklearn
 from keras.utils import to_categorical
+from keras.callbacks import EarlyStopping
 import os
 import sklearn.cluster
 from sklearn.model_selection import train_test_split
@@ -30,7 +31,7 @@ def make_labels(directory, data=[], y_hat=[], label=0):
         y_hat = [label] * len(data)
     return np.array(data), np.array(y_hat)
 
-parent_folder = 'Training/augmentation1/'
+parent_folder = 'Training/augmentation2/'
 
 a, y_a = [], []
 a, y_a = make_labels(parent_folder + '/A/', data=a, y_hat=y_a, label=0)
@@ -70,6 +71,8 @@ a = b = c = d = e = f = None
 y = np.hstack((y_a, y_b, y_c, y_d, y_e, y_f)).reshape(-1, 1)
 y_cat = to_categorical(y)
 
+y = None
+
 print(X.shape)
 print(y_cat.shape)
 
@@ -102,13 +105,17 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accur
 # Display the model summary
 model.summary()
 
+early_stopping = EarlyStopping(monitor='val_loss', patience=4, restore_best_weights=True)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y_cat, test_size=0.2, random_state=42)
+
+X = None
+y_cat = None
 
 # Normalize pixel values to be between 0 and 1
 X_train = X_train / 255.0
 X_test = X_test / 255.0
 
-model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
+model.fit(X_train, y_train, epochs=15, batch_size=8, validation_data=(X_test, y_test), callbacks=[early_stopping])
 
-model.save('categorizer.h5')
+model.save('categorizer-aug2-1-10ep.h5')
