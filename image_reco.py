@@ -175,7 +175,6 @@ def get_min_x_max_x_min_y_max_y(contour):
 
 def predict_contour(contour):
 
-
     min_x, max_x, min_y, max_y = get_min_x_max_x_min_y_max_y(contour)
 
     width = max_x - min_x + 2*3
@@ -234,6 +233,30 @@ class img:
         self.image = image
 
 
+
+def is_fully_included(region1, region2):
+    min_x1, max_x1, min_y1, max_y1 = region1
+    min_x2, max_x2, min_y2, max_y2 = region2
+    
+    # Check if region1 is fully included in region2
+    return (min_x1 >= min_x2) and (max_x1 <= max_x2) and (min_y1 >= min_y2) and (max_y1 <= max_y2)
+
+def getim(pannels, im):
+    res = []
+    for i in pannels:
+        res.append(im[i.min_y:i.max_y, i.min_x:i.max_x])
+    return res
+
+
+def predict(photo):
+    photo = cv2.resize(photo, (224, 224))
+    photo = np.expand_dims(photo, axis=0)
+    photo = photo / 255.0
+    predictions = model.predict(photo)
+    return predictions
+
+model = load_model('categorizer.h5')
+
 def disply_im(imgs, im=None, full_im=False, contours=None):
     if(not full_im):
         plt.figure(figsize=(20, 20))
@@ -255,19 +278,17 @@ def disply_im(imgs, im=None, full_im=False, contours=None):
                 if pred > 80:
                     ax1.add_patch(matplotlib.patches.Polygon(cont[:, 0, :], edgecolor="yellow", linewidth=3, fill=False))
                     ax1.annotate(f"{pred:2.2f}%", (x, y-5), size=16, color='orange')
-            
-    plt.show()
+        zones = getim(pannels, im)
+        predictions = []
+        for k in zones:
+            predictions.append(predict(k).argmax())
+        print(predictions)
 
-def is_fully_included(region1, region2):
-    min_x1, max_x1, min_y1, max_y1 = region1
-    min_x2, max_x2, min_y2, max_y2 = region2
-    
-    # Check if region1 is fully included in region2
-    return (min_x1 >= min_x2) and (max_x1 <= max_x2) and (min_y1 >= min_y2) and (max_y1 <= max_y2)
+    plt.show()
 
 # bug: 35 41 96 98 104 131
 
-for i in range(4, 172):
+for i in range(10, 172):
     fn = f"./img/IMG_0{i:03d}.png"
     img_bgr = cv2.imread(fn)
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -281,3 +302,8 @@ for i in range(4, 172):
     contours, hierachy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     pannels = get_pannels(contours, 90)
     disply_im(pannels, img_rgb, True, None)
+
+    # print(type(contours), np.array(contours).shape)
+    # print(type(pannels), np.array(contours).shape)
+
+    # pred = predict
