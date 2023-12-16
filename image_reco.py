@@ -255,7 +255,7 @@ def predict(photo):
     predictions = model.predict(photo)
     return predictions
 
-model = load_model('categorizer.h5')
+model = load_model('./categorizer-aug2-1-10ep.h5')
 
 def disply_im(imgs, im=None, full_im=False, contours=None):
     if(not full_im):
@@ -288,7 +288,7 @@ def disply_im(imgs, im=None, full_im=False, contours=None):
 
 # bug: 35 41 96 98 104 131
 
-for i in range(10, 172):
+for i in range(100, 172):
     fn = f"./img/IMG_0{i:03d}.png"
     img_bgr = cv2.imread(fn)
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)

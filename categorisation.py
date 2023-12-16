@@ -21,12 +21,13 @@ from scipy import signal
 def make_labels(directory, data=[], y_hat=[], label=0):
     for root, dirs, files in os.walk(directory):
         for file in files:
-            img = matplotlib.image.imread(directory+file)
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-            img = np.reshape(img, (224, 224, 1))
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)  # Convert to RGB
+            img = matplotlib.image.imread(directory + file)
+            
+            # Ensure the image has 3 channels (RGB)
+            if img.shape[-1] == 4:
+                img = img[:, :, :3]
+                
             img = cv2.resize(img, (224, 224))
-
             data.append(img)
         y_hat = [label] * len(data)
     return np.array(data), np.array(y_hat)
@@ -116,6 +117,13 @@ y_cat = None
 X_train = X_train / 255.0
 X_test = X_test / 255.0
 
-model.fit(X_train, y_train, epochs=15, batch_size=8, validation_data=(X_test, y_test), callbacks=[early_stopping])
+from keras.preprocessing.image import ImageDataGenerator
+
+datagen = ImageDataGenerator(rescale=1./255)
+
+train_generator = datagen.flow(X_train, y_train, batch_size=8)
+validation_generator = datagen.flow(X_test, y_test, batch_size=8)
+
+model.fit(train_generator, epochs=5, validation_data=validation_generator, callbacks=[early_stopping])
 
 model.save('categorizer-aug2-1-10ep.h5')
