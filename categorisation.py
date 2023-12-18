@@ -32,7 +32,7 @@ def make_labels(directory, data=[], y_hat=[], label=0):
         y_hat = [label] * len(data)
     return np.array(data), np.array(y_hat)
 
-parent_folder = 'Training/augmentation2/'
+parent_folder = 'Training/augmentation1/'
 
 a, y_a = [], []
 a, y_a = make_labels(parent_folder + '/A/', data=a, y_hat=y_a, label=0)
@@ -121,9 +121,9 @@ from keras.preprocessing.image import ImageDataGenerator
 
 datagen = ImageDataGenerator(rescale=1./255)
 
-train_generator = datagen.flow(X_train, y_train, batch_size=8)
-validation_generator = datagen.flow(X_test, y_test, batch_size=8)
+train_generator = datagen.flow(X_train, y_train, batch_size=2)
+validation_generator = datagen.flow(X_test, y_test, batch_size=2)
 
-model.fit(train_generator, epochs=5, validation_data=validation_generator, callbacks=[early_stopping])
+model.fit(train_generator, epochs=5, batch_size=2, validation_data=validation_generator, callbacks=[early_stopping])
 
 model.save('categorizer-aug2-1-10ep.h5')
