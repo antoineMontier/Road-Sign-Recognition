@@ -5,7 +5,7 @@ function git_add_commit_push() {
     if (($# == 0)) ; then
         echo "error, use this way: './push.sh my git commit message'"
     else
-        git add *
+        git add *.py *.ipynb *.md
 
         commit_message="git commit -m '"
         for word in "$@" ; do
