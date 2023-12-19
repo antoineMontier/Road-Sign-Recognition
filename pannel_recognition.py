@@ -14,6 +14,8 @@ from keras.models import load_model
 
 shape_recognizer = load_model('shape-recognizerv3-30eh.h5')
 
+CATEGORIES = ['no turn', 'speed limit', 'access forbiden', 'no way', 'no parking', 'other']
+
 def edge_detection(img_bgr):
     img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     # Apply the Sobel filters for horizontal and vertical edge detection
@@ -247,63 +249,36 @@ def getim(pannels, im):
         res.append(im[i.min_y:i.max_y, i.min_x:i.max_x])
     return res
 
+sign_model = load_model('categorizer.h5')
 
-def predict(photo):
+def predict_sign(photo):
     photo = cv2.resize(photo, (224, 224))
     photo = np.expand_dims(photo, axis=0)
-    photo = photo / 255.0
-    predictions = model.predict(photo)
+    photo = photo / 255.0 # normalise the photo
+    predictions = sign_model.predict(photo, verbose=0)
     return predictions
 
-model = load_model('./categorizer-aug2-1-10ep.h5')
+def predict_pannel_sign(pannels, background_image):
+    for i in pannels:
+        im = background_image[i.min_y : i.max_y, i.min_x : i.max_x]
+        prediction = predict_sign(im)
+        i.sign_prediction = prediction.argmax()
 
-def disply_im(imgs, im=None, full_im=False, contours=None):
-    if(not full_im):
-        plt.figure(figsize=(20, 20))
-        for i in range(len(imgs)):
-            if(im is None):
-                plt.subplot(1,len(imgs) + 1,i+1),plt.imshow(imgs[i].image)
-            else:
-                plt.subplot(1,len(imgs) + 1,i+1),plt.imshow(im[imgs[i].min_y : imgs[i].max_y, imgs[i].min_x : imgs[i].max_x])
-    else:
-        _, (ax1) = plt.subplots(1,figsize=(20,20))
-        plt.xticks([]),plt.yticks([])
-        ax1.imshow(im);
-        for imm in imgs:
-            ax1.add_patch(matplotlib.patches.Polygon([(imm.min_x, imm.min_y), (imm.max_x, imm.min_y), (imm.max_x, imm.max_y), (imm.min_x, imm.max_y)], edgecolor="green", linewidth=3, fill=False))
-        if contours is not None:
-            for cont in filter_c(contours, img_rgb):
-                pred, _ = predict_contour(cont)
-                x, _, y, _ = get_min_x_max_x_min_y_max_y(cont)
-                if pred > 80:
-                    ax1.add_patch(matplotlib.patches.Polygon(cont[:, 0, :], edgecolor="yellow", linewidth=3, fill=False))
-                    ax1.annotate(f"{pred:2.2f}%", (x, y-5), size=16, color='orange')
-        zones = getim(pannels, im)
-        predictions = []
-        for k in zones:
-            predictions.append(predict(k).argmax())
-        print(predictions)
-
+def disply_im(imgs, im):
+    predict_pannel_sign(imgs, im)
+    _, (ax1) = plt.subplots(1,figsize=(20,20))
+    plt.xticks([]),plt.yticks([])
+    ax1.imshow(im);
+    for imm in imgs:
+        ax1.add_patch(matplotlib.patches.Polygon([(imm.min_x, imm.min_y), (imm.max_x, imm.min_y), (imm.max_x, imm.max_y), (imm.min_x, imm.max_y)], edgecolor="green", linewidth=3, fill=False))
+        plt.annotate(CATEGORIES[imm.sign_prediction], (imm.min_x + 2 , imm.min_y - 2), color='yellow', size=16)
     plt.show()
-
-# bug: 35 41 96 98 104 131
 
 for i in range(100, 172):
     fn = f"./img/IMG_0{i:03d}.png"
     img_bgr = cv2.imread(fn)
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-
-
     edged = edge_detection(blur(binary_three(img_bgr)))
-
-    # plt.imshow(edged)
-    # plt.show()
-
     contours, hierachy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     pannels = get_pannels(contours, 90)
-    disply_im(pannels, img_rgb, True, None)
-
-    # print(type(contours), np.array(contours).shape)
-    # print(type(pannels), np.array(contours).shape)
-
-    # pred = predict
+    disply_im(pannels, img_rgb)
