@@ -3,20 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib
-from mpl_toolkits.mplot3d import Axes3D
 import sklearn
 from keras.utils import to_categorical
-from keras.callbacks import EarlyStopping
 import os
 import sklearn.cluster
 from sklearn.model_selection import train_test_split
-import itertools
-import statistics
+from keras.callbacks import EarlyStopping, LearningRateScheduler
 import cv2
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
-import scipy
-from scipy import signal
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
 
 def make_labels(directory, data=[], y_hat=[], label=0):
     for root, dirs, files in os.walk(directory):
@@ -32,7 +27,13 @@ def make_labels(directory, data=[], y_hat=[], label=0):
         y_hat = [label] * len(data)
     return np.array(data), np.array(y_hat)
 
-parent_folder = 'Training/augmentation1/'
+def lr_schedule(epoch):
+    lr = 1e-3  # Initial learning rate
+    if epoch > 5:
+        lr *= 1e-2  # Drop the learning rate by a factor of 100 after 5 epochs
+    return lr
+
+parent_folder = 'Training/augmentation2/'
 
 a, y_a = [], []
 a, y_a = make_labels(parent_folder + '/A/', data=a, y_hat=y_a, label=0)
@@ -77,34 +78,38 @@ y = None
 print(X.shape)
 print(y_cat.shape)
 
-model = Sequential()
+classifier = Sequential()
 
-# Add a Convolutional Layer with 32 filters, a kernel size of (3, 3), and input shape (224, 224, 3)
-model.add(Conv2D(32, (3, 3), input_shape=(224, 224, 3), activation='relu'))
+# Convolutional Layer 1
+classifier.add(Conv2D(32, (3, 3), input_shape=(224, 224, 3), activation='relu'))
+classifier.add(MaxPooling2D(pool_size=(2, 2)))
+classifier.add(Dropout(0.25))
+classifier.add(BatchNormalization())
 
-# Add a MaxPooling Layer with pool size (2, 2)
-model.add(MaxPooling2D(pool_size=(2, 2)))
+# Convolutional Layer 2
+classifier.add(Conv2D(64, (3, 3), activation='relu'))
+classifier.add(MaxPooling2D(pool_size=(2, 2)))
+classifier.add(Dropout(0.25))
+classifier.add(BatchNormalization())
 
-# Add another Convolutional Layer with 64 filters and a kernel size of (3, 3)
-model.add(Conv2D(64, (3, 3), activation='relu'))
+# Convolutional Layer 3
+classifier.add(Conv2D(128, (3, 3), activation='relu'))
+classifier.add(MaxPooling2D(pool_size=(2, 2)))
+classifier.add(Dropout(0.25))
+classifier.add(BatchNormalization())
 
-# Add another MaxPooling Layer
-model.add(MaxPooling2D(pool_size=(2, 2)))
+# Flatten Layer
+classifier.add(Flatten())
 
-# Flatten the output to feed into a Dense layer
-model.add(Flatten())
+# Dense Hidden Layer 1
+classifier.add(Dense(256, activation='relu'))
+classifier.add(Dropout(0.5))
+classifier.add(BatchNormalization())
 
-# Add a Dense layer with 128 neurons
-model.add(Dense(128, activation='relu'))
+# Output Layer for Classification
+classifier.add(Dense(6, activation='softmax'))
 
-# Add the output layer with 6 neurons (assuming 6 categories) and softmax activation
-model.add(Dense(6, activation='softmax'))
-
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-# Display the model summary
-model.summary()
+classifier.summary()
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=4, restore_best_weights=True)
 
@@ -117,13 +122,17 @@ y_cat = None
 X_train = X_train / 255.0
 X_test = X_test / 255.0
 
-from keras.preprocessing.image import ImageDataGenerator
+classifier.compile( optimizer = 'rmsprop', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+lr_scheduler = LearningRateScheduler(lr_schedule)
 
-datagen = ImageDataGenerator(rescale=1./255)
+# from keras.preprocessing.image import ImageDataGenerator
+# 
+# datagen = ImageDataGenerator(rescale=1./255)
+# 
+# train_generator = datagen.flow(X_train, y_train, batch_size=2)
+# validation_generator = datagen.flow(X_test, y_test, batch_size=2)
+# classifier.fit(train_generator, epochs=8, batch_size=16, validation_data=validation_generator, callbacks=[early_stopping])
 
-train_generator = datagen.flow(X_train, y_train, batch_size=2)
-validation_generator = datagen.flow(X_test, y_test, batch_size=2)
+classifier.fit(X_train, y_train, epochs=30, batch_size=3, validation_data=(X_test, y_test), callbacks=[early_stopping, lr_scheduler])
 
-model.fit(train_generator, epochs=5, batch_size=2, validation_data=validation_generator, callbacks=[early_stopping])
-
-model.save('categorizer-aug2-1-10ep.h5')
+classifier.save('categorizer-aug2-2-30ep.h5')
