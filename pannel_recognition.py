@@ -249,7 +249,7 @@ def getim(pannels, im):
         res.append(im[i.min_y:i.max_y, i.min_x:i.max_x])
     return res
 
-sign_model = load_model('categorizer.h5')
+sign_model = load_model('best_model-1.h5')
 
 def predict_sign(photo):
     photo = cv2.resize(photo, (224, 224))
