@@ -1,18 +1,10 @@
-from skimage import measure
-import numpy as np
+import numpy             as np
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import matplotlib
-from mpl_toolkits.mplot3d import Axes3D
-import sklearn
-import sklearn.cluster
-import itertools
-import statistics
-import cv2
-import scipy
-from keras.models import load_model
-import os
 
+from keras.models import load_model
+
+import matplotlib
+import cv2
 
 CATEGORIES = ['no turn', 'speed limit', 'access forbiden', 'no way', 'no parking', 'other']
 
@@ -23,6 +15,10 @@ shape_recognizer = load_model( model_dir + 'shape-recognizerv3-30eh.h5' )
 sign_model       = load_model( model_dir + 'best_model-1.h5'            )
 
 
+MIN_PANNEL_RATIO  = .5
+MAX_PANNEL_RATIO  =  2
+MIN_AREA_OCCUPIED = .0004
+MIN_AREA_PIXEL    =  6**2
 
 # Chat-GPT
 def edge_detection(img_bgr):
@@ -183,7 +179,10 @@ def filter_c(contours, image):
         # Calculate the aspect ratio (ratio of major axis to minor axis)
         ratio = major_axis / minor_axis
 
-        if(c_area > 6**2 and c_area > image_area*.0004 and 0.5 < ratio < 2):
+        if( c_area > MIN_AREA_PIXEL and
+            c_area > image_area*MIN_AREA_OCCUPIED and 
+            MAX_PANNEL_RATIO < ratio < MAX_PANNEL_RATIO):
+            
             n_list.append(cont)
 
 
@@ -200,7 +199,6 @@ def pred_circle(img_bgr):
 
     # Make a prediction
     prediction = shape_recognizer.predict(img)
-
 
     # Interpret the prediction
     return prediction[0][0]
@@ -281,8 +279,18 @@ def get_pannels(contours, threshold=80):
     for r in range(len(res)):
         included = False
         for k in range(r + 1, len(res)):
-            if included or is_fully_included((res[r].min_x, res[r].max_x, res[r].min_y, res[r].max_y), (res[k].min_x, res[k].max_x, res[k].min_y, res[k].max_y)):
+            if  included or \
+                is_fully_included(( res[r].min_x,
+                                    res[r].max_x,
+                                    res[r].min_y,
+                                    res[r].max_y),
+                                    (   res[k].min_x,
+                                        res[k].max_x,
+                                        res[k].min_y,
+                                        res[k].max_y)):
+                
                 included = True
+
         if not included:
             n_res.append(res[r])
 
@@ -312,7 +320,10 @@ def is_fully_included(region1, region2):
 
 
     # Check if region1 is fully included in region2
-    return (min_x1 >= min_x2) and (max_x1 <= max_x2) and (min_y1 >= min_y2) and (max_y1 <= max_y2)
+    return  (min_x1 >= min_x2) and \
+            (max_x1 <= max_x2) and \
+            (min_y1 >= min_y2) and \
+            (max_y1 <= max_y2)
 
 
 
@@ -342,6 +353,7 @@ def predict_sign(photo):
 def predict_pannel_sign(pannels, background_image):
 
     for i in pannels:
+
         im = background_image[i.min_y : i.max_y, i.min_x : i.max_x]
         prediction = predict_sign(im)
         i.sign_prediction = prediction.argmax()
@@ -372,9 +384,7 @@ def disply_im(imgs, im):
     
     plt.show()
 
-
-
-for i in range(100, 172):
+for i in range(80, 172):
     fn = f"{img_dir}IMG_0{i:03d}.png"
 
     img_bgr = cv2.imread(fn)

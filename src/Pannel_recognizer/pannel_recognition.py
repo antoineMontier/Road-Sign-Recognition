@@ -12,7 +12,7 @@ import cv2
 import scipy
 from keras.models import load_model
 
-shape_recognizer = load_model('shape-recognizerv3-30eh.h5')
+shape_recognizer = load_model('./../../models/shape-recognizerv3-30eh.h5')
 
 CATEGORIES = ['no turn', 'speed limit', 'access forbiden', 'no way', 'no parking', 'other']
 
@@ -249,7 +249,7 @@ def getim(pannels, im):
         res.append(im[i.min_y:i.max_y, i.min_x:i.max_x])
     return res
 
-sign_model = load_model('best_model-1.h5')
+sign_model = load_model('./../../models/best_model-1.h5')
 
 def predict_sign(photo):
     photo = cv2.resize(photo, (224, 224))
@@ -275,7 +275,7 @@ def disply_im(imgs, im):
     plt.show()
 
 for i in range(100, 172):
-    fn = f"./img/IMG_0{i:03d}.png"
+    fn = f"./../../img/IMG_0{i:03d}.png"
     img_bgr = cv2.imread(fn)
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     edged = edge_detection(blur(binary_three(img_bgr)))

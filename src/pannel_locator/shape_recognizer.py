@@ -37,11 +37,11 @@ def make_labels(directory, data=[], y_hat=[], label=0):
 # ===
 
 circle, y_circle = [], []
-circle, y_circle = make_labels('shape-train/circle/', data=circle, y_hat=y_circle, label=0)
+circle, y_circle = make_labels('./../../shape-train/circle/', data=circle, y_hat=y_circle, label=0)
 print("circle loaded")
 
 no_circle, y_no_circle = [], []
-no_circle, y_no_circle = make_labels('shape-train/not-circle/', data=no_circle, y_hat=y_no_circle, label=1)
+no_circle, y_no_circle = make_labels('./../../shape-train/not-circle/', data=no_circle, y_hat=y_no_circle, label=1)
 print("no_circle loaded")
 
 # ===

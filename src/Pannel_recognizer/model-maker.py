@@ -15,7 +15,7 @@ num_classes = len(class_labels)
 img_height, img_width = 224, 224
 
 # Path to your dataset
-dataset_path = 'Training/augmentation1/'
+dataset_path = './../../Training/augmentation1/'
 
 # Function to load images and labels
 def load_dataset(dataset_path, class_labels):
@@ -71,7 +71,7 @@ model.summary()
 
 # Callbacks
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-checkpoint = ModelCheckpoint('best_model-1.h5', monitor='val_accuracy', save_best_only=True)
+checkpoint = ModelCheckpoint('./../../new-model.h5', monitor='val_accuracy', save_best_only=True)
 
 # Training the model
 history = model.fit(
