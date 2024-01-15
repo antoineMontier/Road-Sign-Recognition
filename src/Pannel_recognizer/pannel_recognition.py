@@ -109,7 +109,6 @@ def saturate(img_bgr):
 
     return cv2.cvtColor(res, cv2.COLOR_RGB2BGR)
     
-
 def balancement(img_bgr):
     blue_adjustment = -10  # Adjust the blue channel
     green_adjustment = -5  # Adjust the green channel
