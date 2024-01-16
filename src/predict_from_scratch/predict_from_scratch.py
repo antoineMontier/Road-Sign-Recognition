@@ -11,14 +11,18 @@ CATEGORIES = ['no turn', 'speed limit', 'access forbiden', 'no way', 'no parking
 model_dir = './../../models/'
 img_dir   = './../../img/'
 
+# Load shape model for locating circular shapes
 shape_recognizer = load_model( model_dir + 'shape-recognizerv3-30eh.h5' )
-sign_model       = load_model( model_dir + 'best_model-1.h5'            )
+
+# Load sign model for classifying signs
+sign_model       = load_model( model_dir + 'best_model.h5'         )
 
 
 MIN_PANNEL_RATIO  = .5
 MAX_PANNEL_RATIO  =  2
 MIN_AREA_OCCUPIED = .0004
 MIN_AREA_PIXEL    =  6**2
+
 
 # Chat-GPT
 def edge_detection(img_bgr):
@@ -51,73 +55,40 @@ def edge_detection(img_bgr):
 
 	return edge_magnitude
 
+def zoom_image(image, zoom_factor=1.0):
+    """
+    Zooms an image using the specified zoom factor.
+    
+    :param image: A numpy array representing the image to be zoomed.
+    :param zoom_factor: A float representing the zoom factor. Values > 1 will zoom in, values < 1 will zoom out.
+    :return: The zoomed image as a numpy array.
+    """
+    height, width = image.shape[:2]
 
+    # Center of the image
+    center_x, center_y = width / 2, height / 2
 
-def binary_one(img_bgr):
-	"""
-	Converts an image to a binary format focusing on red-colored regions.
+    # The dimensions of the zoomed image
+    new_width = int(width * zoom_factor)
+    new_height = int(height * zoom_factor)
 
-	Parameters:
-	img_bgr: numpy.ndarray
-		The input image in BGR format.
+    # The coordinates of the top-left corner of the zoomed image
+    top_left_x = int(center_x - new_width / 2)
+    top_left_y = int(center_y - new_height / 2)
 
-	Returns:
-	numpy.ndarray
-		The binary image with red regions highlighted.
-	"""
+    # Ensuring the coordinates are within the bounds of the original image
+    top_left_x = max(top_left_x, 0)
+    top_left_y = max(top_left_y, 0)
+    new_width = min(new_width, width - top_left_x)
+    new_height = min(new_height, height - top_left_y)
 
-	img     = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-	img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+    # Cropping and resizing the image
+    cropped_img = image[top_left_y: top_left_y + new_height, top_left_x: top_left_x + new_width]
+    resized_img = cv2.resize(cropped_img, (width, height), interpolation=cv2.INTER_LINEAR)
 
-	lower_red = np.array([10,  150, 50 ])
-	upper_red = np.array([255, 255, 255])
+    return resized_img
 
-
-	# Create a binary mask for the red color within the specified range
-	mask = cv2.inRange(img_hsv, lower_red, upper_red)
-
-	# Apply the mask to the original image to segment the red regions
-	red_segmented   = cv2.bitwise_and(img, img, mask = mask)
-	_, binary_image = cv2.threshold  (red_segmented, red_segmented.mean(), 255, cv2.THRESH_BINARY)
-
-
-	return binary_image
-
-
-
-def binary_two(img_bgr):
-	"""
-	Another approach to convert an image to binary format, focusing on red-colored regions.
-
-	Parameters:
-	img_bgr: numpy.ndarray
-		The input image in BGR format.
-
-	Returns:
-	numpy.ndarray
-		The binary image with red regions highlighted.
-	"""
-
-	img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-
-
-	# Define a more specific range for red in HSV color space
-	lower_red = np.array([0, 100 , 100])  # Lower red hue
-	upper_red = np.array([30, 255, 255])  # Upper red hue
-
-	# Create a binary mask for the red color within the specified range
-	mask = cv2.inRange(img_hsv, lower_red, upper_red)
-
-	# Apply the mask to the original image to segment the red regions
-	red_segmented     = cv2.bitwise_and(img_bgr, img_bgr, mask=mask)
-	red_segmented_rgb = cv2.cvtColor   (red_segmented, cv2.COLOR_BGR2RGB)
-
-
-	return red_segmented_rgb
-
-
-
-def binary_three(img_bgr):
+def binary_filter(img_bgr):
 	"""
 	A third method for converting an image to binary format, emphasizing red regions.
 
@@ -147,30 +118,6 @@ def binary_three(img_bgr):
 
 	return binary_image
 
-
-
-def equalized(img_bgr):
-	"""
-	Applies histogram equalization to an image.
-
-	Parameters:
-	img_bgr: numpy.ndarray
-		The input image in BGR format.
-
-	Returns:
-	numpy.ndarray
-		The histogram equalized image.
-	"""
-
-	img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-	
-	equalized_channels = [cv2.equalizeHist(channel) for channel in cv2.split(img)]
-	equalized_img      =  cv2.merge(equalized_channels)
-
-	return equalized_img
-
-
-
 def blur(img_bgr, kernel_size=5):
 	"""
 	Applies Gaussian blur to an image.
@@ -186,65 +133,6 @@ def blur(img_bgr, kernel_size=5):
 		The blurred image.
 	"""
 	return cv2.GaussianBlur(img_bgr, (kernel_size, kernel_size), 0)
-
-
-
-# https://medium.com/featurepreneur/colour-filtering-and-colour-pop-effects-using-opencv-python-3ce7d4576140
-def saturate(img_bgr):
-	"""
-	Increases the saturation of red colors in the image.
-
-	Parameters:
-	img_bgr: numpy.ndarray
-		The input image in BGR format.
-
-	Returns:
-	numpy.ndarray
-		The image with increased saturation of red colors.
-	"""
-	hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-
-
-	#create a mask using the bounds set
-	mask = cv2.inRange( hsv, 
-						np.array([160,100, 50]),
-						np.array([180,255,255]))
-	
-	#Filter only the red colour from the original image using the mask (foreground)
-	res = cv2.bitwise_and(img_bgr, img_bgr, mask=mask)
-
-
-	return cv2.cvtColor(res, cv2.COLOR_RGB2BGR)
-
-
-
-def balancement(img_bgr):
-	"""
-	Applies color balance adjustments to an image.
-
-	Parameters:
-	img_bgr: numpy.ndarray
-		The input image in BGR format.
-
-	Returns:
-	numpy.ndarray
-		The color-balanced image.
-	"""
-
-	blue_adjustment  = -10  # Adjust the blue channel
-	green_adjustment = -5   # Adjust the green channel
-	red_adjustment   = 20   # Adjust the red channel
-
-
-	# Apply color balance adjustments
-	image = img_bgr.astype(np.float32)
-
-	image[:, :, 2] = np.clip(image[:, :, 0] + blue_adjustment,  0, 255)
-	image[:, :, 1] = np.clip(image[:, :, 1] + green_adjustment, 0, 255)
-	image[:, :, 0] = np.clip(image[:, :, 2] + red_adjustment,   0, 255)
-
-
-	return image.astype(np.uint8)
 	
 def filter_c(contours, image):
 	"""
@@ -291,8 +179,6 @@ def filter_c(contours, image):
 
 	return n_list
 
-
-
 def pred_circle(img_bgr):
 	"""
 	Predicts whether a given image contains a circular shape.
@@ -311,12 +197,10 @@ def pred_circle(img_bgr):
 	img = np.expand_dims(img, axis=0)
 
 	# Make a prediction
-	prediction = shape_recognizer.predict(img)
+	prediction = shape_recognizer.predict(img, verbose=0)
 
 	# Interpret the prediction
 	return prediction[0][0]
-
-
 
 def get_min_x_max_x_min_y_max_y(contour):
 	"""
@@ -344,8 +228,6 @@ def get_min_x_max_x_min_y_max_y(contour):
 
 
 	return min_x, max_x, min_y, max_y
-
-
 
 def predict_contour(contour):
 	"""
@@ -384,8 +266,6 @@ def predict_contour(contour):
 
 	return pred, new_image
 	
-
-
 def get_pannels(contours, threshold=80):
 	"""
 	Identifies and filters contours that are likely to be traffic signs.
@@ -406,8 +286,6 @@ def get_pannels(contours, threshold=80):
 
 	res = []
 	
-	print("len contour in get_pannels", len(contours), " after filtering,", len(filter_c(contours, img_rgb)))
-
 	for contour in filter_c(contours, img_rgb):
 
 		min_x, max_x, min_y, max_y = get_min_x_max_x_min_y_max_y(contour)
@@ -419,40 +297,26 @@ def get_pannels(contours, threshold=80):
 		
 		res.append(img(min_x, max_x, min_y, max_y, pred, im))
 	
-	print("len pannel in get_pannel", len(res))
-
 	if len(res) < 2:
 		return res
 	
-
-
 	# remove the regions that are in common
 	n_res = []
 
 	for r in range(len(res)):
-		included = False
-		for k in range(r + 1, len(res)):
-			if  included or \
-				is_fully_included(( res[r].min_x,
-									res[r].max_x,
-									res[r].min_y,
-									res[r].max_y),
-									(   res[k].min_x,
-										res[k].max_x,
-										res[k].min_y,
-										res[k].max_y)):
-				
-				included = True
 
-		if not included:
-			n_res.append(res[r])
+		included = False
+		
+		for k in range(len(res)):
+
+			if k != r and res[r].is_in(res[k]):				
+				included = True
+				break
+
+		if not included: n_res.append(res[r])
 
 
 	return n_res
-
-
-
-
 
 class img:
 
@@ -464,61 +328,16 @@ class img:
 		self.pred  = pred
 		self.image = image
 
+	def is_in(self, other_image):
+		return  (self.min_x >= other_image.min_x) and \
+				(self.max_x <= other_image.max_x) and \
+				(self.min_y >= other_image.min_y) and \
+				(self.max_y <= other_image.max_y)
 
-
-def is_fully_included(region1, region2):
-	"""
-	Checks if one region is fully included within another.
-
-	Parameters:
-	region1: tuple
-		The first region (min_x, max_x, min_y, max_y).
-	region2: tuple
-		The second region (min_x, max_x, min_y, max_y).
-
-	Returns:
-	bool
-		True if region1 is fully included in region2, False otherwise.
-	"""
-	min_x1, max_x1, min_y1, max_y1 = region1
-	min_x2, max_x2, min_y2, max_y2 = region2
-
-
-	# Check if region1 is fully included in region2
-	return  (min_x1 >= min_x2) and \
-			(max_x1 <= max_x2) and \
-			(min_y1 >= min_y2) and \
-			(max_y1 <= max_y2)
-
-
-
-def getim(pannels, im):
-	"""
-	Extracts images of traffic sign regions from the original image.
-
-	Parameters:
-	pannels: list
-		A list of image regions (traffic signs).
-	im: numpy.ndarray
-		The original image.
-
-	Returns:
-	list
-		A list of images of the extracted traffic sign regions.
-	"""
-
-	res = []
-	for i in pannels:
-		res.append(im[i.min_y:i.max_y, i.min_x:i.max_x])
-
-	return res
-
-
+	def __str__(self):
+		return f"min_x: {self.min_x} max_x: {self.max_x} min_y: {self.min_y} max_y: {self.max_y}"
 
 def predict_sign(photo):
-
-	print("step 1")
-
 	"""
 	Predicts the type of traffic sign from an image.
 
@@ -532,21 +351,14 @@ def predict_sign(photo):
 	"""
 
 	photo = cv2.resize(photo, (224, 224))
-	print("step 2")
 
 	photo = np.expand_dims(photo, axis=0)
-	print("step 3")
 
 	photo = photo / 255.0 # normalise the photo
-	print("step 4")
 
 	predictions = sign_model.predict(photo, verbose=0)
-	print("step 5", predictions)
-
 
 	return predictions
-
-
 
 def predict_pannel_sign(pannels, background_image):
 	"""
@@ -566,9 +378,6 @@ def predict_pannel_sign(pannels, background_image):
 		im = background_image[i.min_y : i.max_y, i.min_x : i.max_x]
 		prediction = predict_sign(im)
 		i.sign_prediction = prediction.argmax()
-		print("1 it", i.sign_prediction)
-
-
 
 def disply_im(imgs, im, save_path=''):
 	"""
@@ -614,18 +423,14 @@ def disply_im(imgs, im, save_path=''):
 	# Close the plot to free up resources
 	plt.close()
 
-for i in range(86, 100):
+for i in range(1, 100):
 	fn = f"{img_dir}IMG_0{i:03d}.png"
 
 	img_bgr = cv2.imread(fn)
 	img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
-	print('>>>', np.array(img_rgb).shape)
-
-	edged = edge_detection(blur(binary_three(img_bgr)))
+	edged = edge_detection(blur(binary_filter(img_bgr)))
 	contours, _ = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	pannels = get_pannels(contours, 90)
 
-	print(f"len(pannels) { len(pannels)}")
-
-	disply_im(pannels, img_rgb, f'./aa{i}.png')
+	disply_im(pannels, img_rgb) #f'./aa{i}.png')

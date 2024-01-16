@@ -15,7 +15,7 @@ num_classes = len(class_labels)
 img_height, img_width = 224, 224
 
 # Path to your dataset
-dataset_path = './../../Training/augmentation1/'
+dataset_path = './../../Training/augmentation3/'
 
 # Function to load images and labels
 def load_dataset(dataset_path, class_labels):
@@ -35,17 +35,27 @@ def load_dataset(dataset_path, class_labels):
 # Loading the dataset
 images, labels = load_dataset(dataset_path, class_labels)
 
+print("raw data loaded")
+
 # Normalize pixel values to be between 0 and 1
 images = images / 255.0
+
+print("normalized")
 
 # Convert class vectors to binary class matrices
 labels = to_categorical(labels, num_classes)
 
+print("one-hot encoded")
+
 # Splitting dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=.1, random_state=42)
+
+print("XY train / test created")
 
 images = None
 labels = None
+
+print("freeing some memory")
 
 # Model architecture
 model = Sequential([
@@ -58,26 +68,30 @@ model = Sequential([
     Flatten(),
     Dense(512, activation='relu'),
     Dropout(0.5),
-    Dense(6, activation='softmax')  # Adjust the number of neurons to match the number of classes
+    Dense(num_classes, activation='softmax')  # Adjust the number of neurons to match the number of classes
 ])
 
-# Compiling the model
-model.compile(optimizer='adam',
-              loss='categorical_crossentropy',
-              metrics=['accuracy'])
+print("model created")
 
-# Model summary
-model.summary()
+# Compiling the model
+model.compile(  optimizer='adam',
+                loss='categorical_crossentropy',
+                metrics=['accuracy'])
+
+print("model compiled")
+
 
 # Callbacks
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-checkpoint = ModelCheckpoint('./../../new-model.h5', monitor='val_accuracy', save_best_only=True)
+checkpoint = ModelCheckpoint('./../../models/model-zoomed.h5', monitor='val_accuracy', save_best_only=True)
+
+print("callbacks implemented")
 
 # Training the model
 history = model.fit(
     X_train, y_train,
     batch_size=8,
-    epochs=40,
+    epochs=5,
     validation_data=(X_test, y_test),
     callbacks=[early_stopping, checkpoint]
 )
