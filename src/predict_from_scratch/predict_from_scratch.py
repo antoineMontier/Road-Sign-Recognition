@@ -8,8 +8,9 @@ import cv2
 
 CATEGORIES = ['no turn', 'speed limit', 'access forbiden', 'no way', 'no parking', 'other']
 
-model_dir = './../../models/'
-img_dir   = './../../img/'
+model_dir   = './../../models/'
+img_dir     = './../../img/'
+upload_path = './../../uploads/'
 
 # Load shape model for locating circular shapes
 shape_recognizer = load_model( model_dir + 'shape-recognizerv3-30eh.h5' )
@@ -266,7 +267,7 @@ def predict_contour(contour):
 
 	return pred, new_image
 	
-def get_pannels(contours, threshold=80):
+def get_pannels(contours, img_rgb, threshold=80):
 	"""
 	Identifies and filters contours that are likely to be traffic signs.
 
@@ -422,6 +423,7 @@ def disply_im(imgs, im, save_path=''):
 
 	# Close the plot to free up resources
 	plt.close()
+"""
 
 for i in range(1, 100):
 	fn = f"{img_dir}IMG_0{i:03d}.png"
@@ -434,3 +436,21 @@ for i in range(1, 100):
 	pannels = get_pannels(contours, 90)
 
 	disply_im(pannels, img_rgb) #f'./aa{i}.png')
+
+"""
+
+def main(file_name:str = 'Nothing'):
+	if file_name == 'Nothing':
+		print('use: main(\'file\') with a file in the uploads directory')
+	if file_name == 'file':
+		fn = upload_path + "in.png"
+		img_bgr = cv2.imread(fn)
+		img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+		edged = edge_detection(blur(binary_filter(img_bgr)))
+		contours, _ = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+		pannels = get_pannels(contours, img_rgb, 90)
+
+		disply_im(pannels, img_rgb, upload_path + "out.png")
+
+if __name__ == '__main__':
+	main('file')
